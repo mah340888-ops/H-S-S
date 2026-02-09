@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>H S S | جميع البرامج</title>
     <link rel="stylesheet" href="style.css">
+    <script type="module" src="firebase-config.js"></script>
 </head>
 <body>
     <header>
@@ -19,7 +20,9 @@
         </nav>
     </header>
 
-    <script>
+    <script type="module">
+        import { auth } from './firebase-config.js';
+
         function updateAuthLink() {
             const user = JSON.parse(localStorage.getItem('hss_user'));
             const authLink = document.getElementById('auth-link');
@@ -37,9 +40,11 @@
                 }
                 authLink.innerHTML = `<span class="user-status">أهلاً، ${user.name.split(' ')[0]}</span>`;
                 authLink.href = "#";
-                authLink.onclick = () => {
+                authLink.onclick = (e) => {
+                    e.preventDefault();
                     if(confirm('هل تريد تسجيل الخروج؟')) {
                         localStorage.removeItem('hss_user');
+                        auth.signOut();
                         location.reload();
                     }
                 };
@@ -64,10 +69,11 @@
         <p>H S S - Hamada Systems Software &copy; 2026</p>
     </footer>
 
-    <script src="script.js"></script>
-    <script type="module" src="firebase-config.js"></script>
-    <script>
-        window.onload = () => displayProducts(false); // عرض الكل
+    <script type="module" src="script.js"></script>
+    <script type="module">
+        window.addEventListener('load', () => {
+            if (typeof displayProducts === 'function') displayProducts(false);
+        });
     </script>
 </body>
 </html>

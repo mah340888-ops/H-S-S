@@ -16,8 +16,7 @@
         .form-group label { margin-bottom: 5px; font-weight: bold; }
         .form-group input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
         .auth-btn { background-color: #27ae60; color: white; width: 100%; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-size: 1.1rem; margin-top: 10px; }
-        .admin-note { font-size: 0.8rem; color: #e74c3c; margin-top: 15px; text-align: center; }
-
+        
         @media (max-width: 600px) {
             .auth-container { margin: 20px 15px; padding: 20px; }
         }
@@ -45,13 +44,13 @@
         <form id="login-form" class="auth-form active">
             <div class="form-group">
                 <label>البريد الإلكتروني:</label>
-                <input type="email" id="login-email" required placeholder="admin@hss.com">
+                <input type="email" id="login-email" required placeholder="example@hss.com">
             </div>
             <div class="form-group">
                 <label>كلمة السر:</label>
                 <input type="password" id="login-pass" required>
             </div>
-            <button type="submit" class="auth-btn" style="background-color: #3498db;">دخول</button>
+            <button type="submit" class="auth-btn" id="login-btn" style="background-color: #3498db;">دخول</button>
         </form>
 
         <!-- Register Form -->
@@ -72,14 +71,22 @@
                 <label>رقم الهاتف:</label>
                 <input type="tel" id="reg-phone" required>
             </div>
-            <button type="submit" class="auth-btn">إنشاء حساب جديد</button>
+            <button type="submit" class="auth-btn" id="reg-btn">إنشاء حساب جديد</button>
         </form>
     </div>
 
-    <script src="script.js"></script>
-    <script type="module" src="firebase-config.js"></script>
-    <script>
-        function switchTab(type) {
+    <script type="module" src="script.js"></script>
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            doc, setDoc, getDoc, serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        window.switchTab = function(type) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             
@@ -90,64 +97,94 @@
                 document.querySelectorAll('.tab')[1].classList.add('active');
                 document.getElementById('register-form').classList.add('active');
             }
-        }
+        };
 
         // تسجيل الدخول
-        document.getElementById('login-form').addEventListener('submit', function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
+            const btn = document.getElementById('login-btn');
 
-            // حساب الأدمن
-            if (email === 'hmaDa@hss.com' && pass === '015485') {
-                const adminData = { name: "أدمن حمادة", email: email, role: "admin", isLoggedIn: true };
-                localStorage.setItem('hss_user', JSON.stringify(adminData));
-                alert('أهلاً بك يا أدمن! جاري التحويل للوحة التحكم.');
-                window.location.href = 'admin.html';
-                return;
-            }
+            btn.disabled = true;
+            btn.innerText = "جاري الدخول...";
 
-            // البحث في قائمة المستخدمين
-            const users = JSON.parse(localStorage.getItem('hss_users_list')) || [];
-            const user = users.find(u => u.email === email && u.pass === pass);
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
 
-            if (user) {
-                user.isLoggedIn = true;
-                localStorage.setItem('hss_user', JSON.stringify(user));
-                alert(`مرحباً بك مجدداً، ${user.name}`);
-                window.location.href = 'index.html';
-            } else {
-                alert('خطأ في البريد الإلكتروني أو كلمة السر!');
+                // جلب بيانات المستخدم من Firestore
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    const localData = { 
+                        uid: user.uid, 
+                        name: userData.name, 
+                        email: user.email, 
+                        role: userData.role || 'user', 
+                        purchases: userData.purchases || [],
+                        isLoggedIn: true 
+                    };
+                    localStorage.setItem('hss_user', JSON.stringify(localData));
+                    
+                    showToast(`مرحباً بك مجدداً، ${userData.name}`);
+                    setTimeout(() => {
+                        window.location.href = (userData.role === 'admin') ? 'admin.html' : 'index.html';
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('خطأ في البريد الإلكتروني أو كلمة السر!', 'error');
+                btn.disabled = false;
+                btn.innerText = "دخول";
             }
         });
 
         // إنشاء حساب
-        document.getElementById('register-form').addEventListener('submit', function(e) {
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const newUser = {
-                name: document.getElementById('reg-name').value,
-                email: document.getElementById('reg-email').value,
-                pass: document.getElementById('reg-pass').value,
-                phone: document.getElementById('reg-phone').value,
-                purchases: [],
-                role: "user"
-            };
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-pass').value;
+            const phone = document.getElementById('reg-phone').value;
+            const btn = document.getElementById('reg-btn');
 
-            let users = JSON.parse(localStorage.getItem('hss_users_list')) || [];
-            if (users.find(u => u.email === newUser.email)) {
-                alert('هذا البريد الإلكتروني مسجل بالفعل!');
-                return;
+            btn.disabled = true;
+            btn.innerText = "جاري إنشاء الحساب...";
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+
+                const userData = {
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    role: "user",
+                    purchases: [],
+                    createdAt: serverTimestamp()
+                };
+
+                await setDoc(doc(db, "users", user.uid), userData);
+
+                const localData = { 
+                    uid: user.uid, 
+                    name: name, 
+                    email: email, 
+                    role: "user", 
+                    purchases: [], 
+                    isLoggedIn: true 
+                };
+                localStorage.setItem('hss_user', JSON.stringify(localData));
+
+                showToast('تم إنشاء الحساب بنجاح!');
+                setTimeout(() => window.location.href = 'index.html', 1500);
+            } catch (error) {
+                console.error(error);
+                showToast('حدث خطأ أثناء إنشاء الحساب!', 'error');
+                btn.disabled = false;
+                btn.innerText = "إنشاء حساب جديد";
             }
-
-            users.push(newUser);
-            localStorage.setItem('hss_users_list', JSON.stringify(users));
-            
-            // تسجيل الدخول تلقائياً
-            newUser.isLoggedIn = true;
-            localStorage.setItem('hss_user', JSON.stringify(newUser));
-            
-            alert('تم إنشاء الحساب بنجاح!');
-            window.location.href = 'index.html';
         });
     </script>
 </body>

@@ -1,6 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,29 +18,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 console.log("Firebase initialized successfully!");
-// 1. استيراد خدمات قاعدة البيانات
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// 2. تعريف قاعدة البيانات
-const db = getFirestore(app);
-
-// 3. دالة لإرسال بيانات تجريبية
-async function testFirebase() {
-    try {
-        const docRef = await addDoc(collection(db, "users"), {
-            name: "Ahmed",
-            message: "Hello from my website!",
-            date: new Date()
-        });
-        console.log("تم إرسال البيانات بنجاح! ID: ", docRef.id);
-        alert("مبروك! أول داتا وصلت لفيربيز");
-    } catch (e) {
-        console.error("خطأ في الإرسال: ", e);
-    }
-}
-
-// تشغيل الدالة فوراً للتجربة
-testFirebase();
-
+export { app, analytics, db, auth };

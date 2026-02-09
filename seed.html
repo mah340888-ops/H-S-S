@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>H S S | تهيئة البيانات</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+        button { background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 1.1rem; font-weight: bold; }
+        button:disabled { background: #bdc3c7; }
+        #status { margin-top: 20px; color: #7f8c8d; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>H S S Data Seeder</h2>
+        <p>هذا الملف سيقوم بإضافة بيانات تجريبية (برامج، إعدادات) إلى قاعدة بيانات فيربيز الخاصة بك.</p>
+        <button id="seed-btn">بدء إضافة البيانات</button>
+        <div id="status"></div>
+    </div>
+
+    <script type="module">
+        console.log("Seeder script starting...");
+        import { db } from './firebase-config.js';
+        import { 
+            collection, addDoc, setDoc, doc, serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const btn = document.getElementById('seed-btn');
+        const status = document.getElementById('status');
+
+        if (!db) {
+            console.error("Firebase DB not initialized!");
+            status.innerHTML = "<h3 style='color:red'>خطأ: لم يتم التعرف على قاعدة البيانات. تأكد من إعدادات firebase-config.js</h3>";
+        }
+
+        const products = [
+            {
+                name: "HSS Photoshop Pro",
+                version: "v2024.1",
+                description: "أفضل أداة لتعديل الصور وإضافة المؤثرات البصرية بشكل احترافي وسهل.",
+                price: "49.99$",
+                downloadUrl: "https://example.com/download/ps",
+                icon: "🎨",
+                createdAt: serverTimestamp()
+            },
+            {
+                name: "HSS Video Editor",
+                version: "v3.5.0",
+                description: "برنامج مونتاج متكامل يدعم جودة 4K مع مكتبة ضخمة من الانتقالات والموسيقى.",
+                price: "75.00$",
+                downloadUrl: "https://example.com/download/video",
+                icon: "🎬",
+                createdAt: serverTimestamp()
+            },
+            {
+                name: "HSS System Booster",
+                version: "v1.2.0",
+                description: "تسريع جهاز الكمبيوتر وتنظيف الملفات المؤقتة بضغطة زر واحدة.",
+                price: "19.99$",
+                downloadUrl: "https://example.com/download/booster",
+                icon: "🚀",
+                createdAt: serverTimestamp()
+            }
+        ];
+
+        const contactConfig = {
+            whatsapp: "01012345678",
+            email: "support@hss.com",
+            address: "القاهرة، مصر - شارع التحرير",
+            updatedAt: serverTimestamp()
+        };
+
+        const sampleUser = {
+            name: "عميل تجريبي",
+            email: "user@example.com",
+            phone: "0123456789",
+            role: "user",
+            purchases: [],
+            createdAt: serverTimestamp()
+        };
+
+        btn.onclick = async () => {
+            console.log("Button clicked!");
+            btn.disabled = true;
+            status.innerHTML = "جاري بدء العملية (تأكد من اتصال الإنترنت)...";
+
+            try {
+                // 1. إضافة المنتجات
+                console.log("Adding products...");
+                status.innerHTML += "<br>جاري إضافة البرامج...";
+                for (const p of products) {
+                    const res = await addDoc(collection(db, "products"), p);
+                    console.log("Product added with ID:", res.id);
+                }
+
+                // 2. إضافة إعدادات التواصل
+                console.log("Adding contact config...");
+                status.innerHTML += "<br>جاري إضافة إعدادات التواصل...";
+                await setDoc(doc(db, "config", "contact"), contactConfig);
+
+                // 3. إضافة مستخدم تجريبي (اختياري)
+                console.log("Adding sample user...");
+                status.innerHTML += "<br>جاري إضافة مستخدم تجريبي...";
+                await addDoc(collection(db, "users"), sampleUser);
+
+                console.log("Success!");
+                status.innerHTML = "<h3 style='color:green'>تمت العملية بنجاح! ✅</h3>";
+                status.innerHTML += "يمكنك الآن العودة إلى <a href='admin.html'>لوحة التحكم</a> أو <a href='index.html'>المتجر</a>.";
+                alert("تمت إضافة البيانات بنجاح!");
+            } catch (err) {
+                console.error("Error during seeding:", err);
+                status.innerHTML = "<h3 style='color:red'>حدث خطأ أثناء الإضافة ❌</h3>" + 
+                                   "<p>السبب: " + err.message + "</p>" +
+                                   "<p>تأكد من أن <b>Firestore Rules</b> تسمح بالكتابة (Test Mode).</p>";
+                btn.disabled = false;
+                alert("حدث خطأ: " + err.message);
+            }
+        };
+    </script>
+</body>
+</html>

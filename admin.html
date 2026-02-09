@@ -103,7 +103,7 @@
                     </tr>
                 </thead>
                 <tbody id="latest-activities">
-                    <!-- تملأ برمجياً -->
+                    <tr><td colspan="3" style="text-align:center;">جاري التحميل...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -112,7 +112,7 @@
         <div id="products" class="content-section">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>إدارة البرامج</h2>
-                <button class="btn-action" style="background:#3498db; color:white; padding: 10px 20px;" onclick="document.getElementById('product-form-container').scrollIntoView()">إضافة جديد +</button>
+                <button class="btn-action" style="background:#3498db; color:white; padding: 10px 20px;" onclick="resetProductForm(); document.getElementById('product-form-container').scrollIntoView()">إضافة جديد +</button>
             </div>
             
             <table>
@@ -124,13 +124,15 @@
                         <th>إجراءات</th>
                     </tr>
                 </thead>
-                <tbody id="products-table-body"></tbody>
+                <tbody id="products-table-body">
+                    <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                </tbody>
             </table>
 
             <hr style="margin: 40px 0;">
             
             <div id="product-form-container">
-                <h3>إضافة / تعديل برنامج</h3>
+                <h3 id="form-title">إضافة برنامج جديد</h3>
                 <form id="product-form">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div>
@@ -151,21 +153,22 @@
                     
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px dashed #ccc;">
                         <div style="margin-bottom: 10px;">
-                            <label>أيقونة البرنامج (صورة من جهازك):</label>
+                            <label>أيقونة البرنامج (صورة):</label>
                             <input type="file" id="p-icon-file" accept="image/*">
+                            <input type="hidden" id="p-icon-url">
                         </div>
                         <div style="margin-bottom: 10px;">
-                            <label>صور البرنامج (يمكنك اختيار أكثر من صورة):</label>
+                            <label>صور البرنامج (اختياري):</label>
                             <input type="file" id="p-images" accept="image/*" multiple>
                         </div>
                         <div>
-                            <label>فيديو شرح (من جهازك):</label>
-                            <input type="file" id="p-video" accept="video/*">
+                            <label>فيديو شرح (رابط اختياري):</label>
+                            <input type="url" id="p-video-url" placeholder="رابط الفيديو (YouTube/MP4)">
                         </div>
                     </div>
 
                     <label>رابط التحميل المباشر للبرنامج:</label>
-                    <input type="url" id="p-link" placeholder="أدخل رابط التحميل">
+                    <input type="url" id="p-link" placeholder="أدخل رابط التحميل" required>
 
                     <button type="submit" class="submit-btn" id="submit-btn">حفظ البرنامج ونشره</button>
                 </form>
@@ -184,7 +187,9 @@
                         <th>إجراءات</th>
                     </tr>
                 </thead>
-                <tbody id="users-table-body"></tbody>
+                <tbody id="users-table-body">
+                    <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                </tbody>
             </table>
         </div>
 
@@ -201,7 +206,9 @@
                         <th>الحالة</th>
                     </tr>
                 </thead>
-                <tbody id="sales-table-body"></tbody>
+                <tbody id="sales-table-body">
+                    <tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr>
+                </tbody>
             </table>
         </div>
 
@@ -216,7 +223,9 @@
                         <th>نوع النسخة</th>
                     </tr>
                 </thead>
-                <tbody id="downloads-table-body"></tbody>
+                <tbody id="downloads-table-body">
+                    <tr><td colspan="3" style="text-align:center;">جاري التحميل...</td></tr>
+                </tbody>
             </table>
         </div>
 
@@ -232,7 +241,9 @@
                         <th>إجراءات</th>
                     </tr>
                 </thead>
-                <tbody id="messages-table-body"></tbody>
+                <tbody id="messages-table-body">
+                    <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                </tbody>
             </table>
         </div>
 
@@ -254,87 +265,27 @@
         </div>
     </main>
 
+    <script type="module" src="firebase-config.js"></script>
     <script type="module">
-    import { db } from './firebase-config.js';
-    import { collection, getDocs, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { db } from './firebase-config.js';
+        import { 
+            collection, getDocs, query, orderBy, deleteDoc, doc, 
+            addDoc, updateDoc, setDoc, getDoc, serverTimestamp, limit 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // --- 1. جلب المستخدمين من Firebase بدل LocalStorage ---
-    window.loadUsersTable = async function() {
-        const tbody = document.getElementById('users-table-body');
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري تحميل البيانات...</td></tr>';
-        
-        try {
-            const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
-            let rows = "";
-            
-            querySnapshot.forEach((firebaseDoc) => {
-                const u = firebaseDoc.data();
-                const userId = firebaseDoc.id; // نحتاجه للحذف
-                rows += `
-                    <tr>
-                        <td>${u.name}</td>
-                        <td>${u.email}</td>
-                        <td>${(u.purchases || []).length}</td>
-                        <td>
-                            <button class="btn-action" style="background:#9b59b6; color:white;">تفاصيل</button>
-                            <button class="btn-action btn-delete" onclick="deleteUser('${userId}')">حذف</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align:center;">لا يوجد مستخدمين</td></tr>';
-            
-            // تحديث الرقم في لوحة النظرة العامة
-            document.getElementById('stat-users').innerText = querySnapshot.size;
-        } catch (error) {
-            console.error("Error fetching users:", error);
-        }
-    }
-
-    // --- 2. دالة الحذف من Firebase ---
-    window.deleteUser = async function(id) {
-        if(confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) {
-            try {
-                await deleteDoc(doc(db, "users", id));
-                alert('تم الحذف بنجاح');
-                loadUsersTable(); // إعادة تحميل الجدول
-            } catch (error) {
-                alert('خطأ في الحذف: ' + error.message);
-            }
-        }
-    }
-
-    // --- 3. تعديل دالة التبديل بين الأقسام ---
-    window.showSection = function(sectionId) {
-        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.sidebar-menu li').forEach(l => l.classList.remove('active'));
-        
-        document.getElementById(sectionId).classList.add('active');
-        // تم تعديل هذه الجزئية لتعمل مع الـ Module
-        if (sectionId === 'users') loadUsersTable();
-        // باقي الأقسام مثل المبيعات وغيرها بنفس الطريقة...
-    }
-
-    // حماية الصفحة (نفس منطقك)
-    const user = JSON.parse(localStorage.getItem('hss_user'));
-    if (!user || user.role !== 'admin') {
-        window.location.href = 'index.html';
-    }
-
-    // تحميل الإحصائيات عند الفتح
-    window.onload = loadUsersTable;
-
-
-
-
-        function showSection(sectionId) {
+        // --- وظائف عامة ---
+        window.showSection = function(sectionId) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.sidebar-menu li').forEach(l => l.classList.remove('active'));
             
-            document.getElementById(sectionId).classList.add('active');
-            event.currentTarget.classList.add('active');
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
             
+            document.querySelectorAll('.sidebar-menu li').forEach(item => {
+                const clickAttr = item.getAttribute('onclick');
+                if (clickAttr && clickAttr.includes(`'${sectionId}'`)) item.classList.add('active');
+            });
+
             if (sectionId === 'overview') loadStats();
             if (sectionId === 'products') loadProductsTable();
             if (sectionId === 'users') loadUsersTable();
@@ -342,278 +293,351 @@
             if (sectionId === 'downloads') loadDownloadsTable();
             if (sectionId === 'messages') loadMessagesTable();
             if (sectionId === 'settings') loadContactSettings();
-        }
+        };
 
-        function loadStats() {
-            const users = JSON.parse(localStorage.getItem('hss_users_list')) || [];
-            const downloads = JSON.parse(localStorage.getItem('hss_downloads')) || [];
-            const messages = JSON.parse(localStorage.getItem('hss_messages')) || [];
-            
-            // حساب المبيعات من خلال فحص المشتريات عند كل مستخدم
-            let totalSales = 0;
-            let totalSerials = 0;
-            users.forEach(u => {
-                if (u.purchases) {
-                    totalSales += u.purchases.length;
-                    totalSerials += u.purchases.length;
-                }
-            });
+        window.showToast = function(message, type = 'success') {
+            const toast = document.createElement('div');
+            let bgColor = '#27ae60'; // success
+            if (type === 'error') bgColor = '#e74c3c';
+            if (type === 'warning') bgColor = '#f39c12';
 
-            document.getElementById('stat-users').innerText = users.length;
-            document.getElementById('stat-downloads').innerText = downloads.length;
-            document.getElementById('stat-sales').innerText = totalSales;
-            document.getElementById('stat-serials').innerText = totalSerials;
-        }
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                background: ${bgColor};
+                color: white; padding: 12px 25px; border-radius: 30px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 9999;
+                font-weight: bold; transition: 0.3s; opacity: 0;
+            `;
+            toast.innerText = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '1'; toast.style.bottom = '40px'; }, 100);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
 
-        function loadMessagesTable() {
-            const messages = JSON.parse(localStorage.getItem('hss_messages')) || [];
-            const tbody = document.getElementById('messages-table-body');
-            tbody.innerHTML = messages.map((m, i) => `
-                <tr style="${m.status === 'new' ? 'background:#fff8e1' : ''}">
-                    <td>${m.name}</td>
-                    <td>${m.subject}</td>
-                    <td>${m.date}</td>
-                    <td>
-                        <button class="btn-action" style="background:#3498db; color:white;" onclick="viewMessage(${i})">عرض</button>
-                        <button class="btn-action btn-delete" onclick="deleteMessage(${i})">حذف</button>
-                    </td>
-                </tr>
-            `).reverse().join('') || '<tr><td colspan="4" style="text-align:center;">لا توجد رسائل جديدة</td></tr>';
-        }
-
-        function viewMessage(index) {
-            let messages = JSON.parse(localStorage.getItem('hss_messages')) || [];
-            const m = messages[index];
-            alert(`رسالة من: ${m.name}\nالإيميل: ${m.email}\nالموضوع: ${m.subject}\n\nالرسالة:\n${m.message}`);
-            messages[index].status = 'read';
-            localStorage.setItem('hss_messages', JSON.stringify(messages));
-            loadMessagesTable();
-        }
-
-        function deleteMessage(index) {
-            if(confirm('حذف هذه الرسالة؟')) {
-                let messages = JSON.parse(localStorage.getItem('hss_messages')) || [];
-                messages.splice(index, 1);
-                localStorage.setItem('hss_messages', JSON.stringify(messages));
-                loadMessagesTable();
-            }
-        }
-
-        function loadContactSettings() {
-            const settings = JSON.parse(localStorage.getItem('hss_contact_settings')) || {
-                whatsapp: "", email: "", address: ""
-            };
-            document.getElementById('set-whatsapp').value = settings.whatsapp;
-            document.getElementById('set-email').value = settings.email;
-            document.getElementById('set-address').value = settings.address;
-        }
-
-        document.getElementById('settings-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const settings = {
-                whatsapp: document.getElementById('set-whatsapp').value,
-                email: document.getElementById('set-email').value,
-                address: document.getElementById('set-address').value
-            };
-            localStorage.setItem('hss_contact_settings', JSON.stringify(settings));
-            alert('تم حفظ إعدادات التواصل بنجاح!');
+        const toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
         });
 
-        function loadDownloadsTable() {
-            const downloads = JSON.parse(localStorage.getItem('hss_downloads')) || [];
-            const tbody = document.getElementById('downloads-table-body');
-            tbody.innerHTML = downloads.map(d => `
-                <tr>
-                    <td>${d.product}</td>
-                    <td>${d.date}</td>
-                    <td><span style="color:#34495e">${d.type}</span></td>
-                </tr>
-            `).reverse().join('') || '<tr><td colspan="3" style="text-align:center;">لا توجد تحميلات بعد</td></tr>';
-        }
+        // --- 1. الإحصائيات (Stats) ---
+        window.loadStats = async function() {
+            try {
+                const userSnap = await getDocs(collection(db, "users"));
+                const prodSnap = await getDocs(collection(db, "products"));
+                const downSnap = await getDocs(collection(db, "downloads"));
+                
+                let totalSales = 0;
+                userSnap.forEach(u => {
+                    const data = u.data();
+                    if (data.purchases) totalSales += data.purchases.length;
+                });
 
-        function loadProductsTable() {
-            const localProducts = JSON.parse(localStorage.getItem('my_products')) || [];
-            const allProducts = [...defaultProducts, ...localProducts];
-            const tbody = document.getElementById('products-table-body');
-            
-            tbody.innerHTML = allProducts.map((p, i) => {
-                // معالجة الأيقونة
-                let iconHTML = p.icon;
-                if (p.icon && p.icon.startsWith('data:image')) {
-                    iconHTML = `<img src="${p.icon}" style="width: 40px; height: 40px; border-radius: 5px; object-fit: cover;">`;
+                document.getElementById('stat-users').innerText = userSnap.size;
+                document.getElementById('stat-downloads').innerText = downSnap.size;
+                document.getElementById('stat-sales').innerText = totalSales;
+                document.getElementById('stat-serials').innerText = totalSales;
+
+                if (userSnap.empty) {
+                    showToast("تنبيه: لا يوجد أي حسابات مستخدمين مسجلة في فيربيز", "warning");
+                }
+                if (prodSnap.empty) {
+                    showToast("تنبيه: لا توجد أي برامج مضافة في فيربيز", "warning");
                 }
 
-                return `
-                    <tr>
-                        <td>${iconHTML}</td>
-                        <td>
-                            <b>${p.name}</b><br>
-                            <small style="color:#7f8c8d">${p.version || 'v1.0.0'}</small>
-                        </td>
-                        <td>${p.price}</td>
-                        <td>
-                            <button class="btn-action" style="background:#f39c12; color:white;" onclick="editProduct(${i})">تعديل</button>
-                            <button class="btn-action btn-delete" onclick="deleteProduct(${i})">حذف</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        let editIndex = null; // لتتبع البرنامج اللي بنعدله
-
-        function editProduct(index) {
-            const localProducts = JSON.parse(localStorage.getItem('my_products')) || [];
-            const allProducts = [...defaultProducts, ...localProducts];
-            const p = allProducts[index];
-
-            if (index < defaultProducts.length) {
-                alert("البرامج الافتراضية للقراءة فقط، يمكنك تعديل البرامج التي أضفتها بنفسك.");
-                return;
-            }
-
-            editIndex = index - defaultProducts.length;
-            
-            // ملء الفورم بالبيانات
-            document.getElementById('p-name').value = p.name;
-            document.getElementById('p-version').value = p.version || '';
-            document.getElementById('p-desc').value = p.description;
-            document.getElementById('p-price').value = p.price;
-            document.getElementById('p-link').value = p.downloadUrl;
-            
-            document.getElementById('submit-btn').innerText = "تحديث بيانات البرنامج";
-            document.getElementById('product-form-container').scrollIntoView();
-        }
-
-        function loadUsersTable() {
-            const users = JSON.parse(localStorage.getItem('hss_users_list')) || [];
-            const tbody = document.getElementById('users-table-body');
-            tbody.innerHTML = users.map(u => `
-                <tr>
-                    <td>${u.name}</td>
-                    <td>${u.email}</td>
-                    <td>${(u.purchases || []).length}</td>
-                    <td><button class="btn-action" style="background:#9b59b6; color:white;">تفاصيل</button></td>
-                </tr>
-            `).join('');
-        }
-
-        function loadSalesTable() {
-            const users = JSON.parse(localStorage.getItem('hss_users_list')) || [];
-            const tbody = document.getElementById('sales-table-body');
-            let rows = "";
-            users.forEach(u => {
-                (u.purchases || []).forEach(p => {
-                    rows += `
+                // أحدث النشاطات (دمج من عدة مجموعات)
+                const activitiesBody = document.getElementById('latest-activities');
+                activitiesBody.innerHTML = "";
+                
+                // عرض آخر 5 مستخدمين مسجلين كمثال
+                const q = query(collection(db, "users"), orderBy("createdAt", "desc"), limit(5));
+                const latestUsers = await getDocs(q);
+                latestUsers.forEach(doc => {
+                    const u = doc.data();
+                    activitiesBody.innerHTML += `
                         <tr>
                             <td>${u.name}</td>
-                            <td>${p.productName}</td>
-                            <td><code>${p.serial}</code></td>
-                            <td>${p.date}</td>
-                            <td><span style="color:green">مفعل</span></td>
+                            <td>تسجيل حساب جديد</td>
+                            <td>${u.createdAt?.toDate().toLocaleDateString('ar-EG') || 'حديثاً'}</td>
                         </tr>
                     `;
                 });
-            });
-            tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">لا توجد مبيعات بعد</td></tr>';
-        }
-
-        // معالجة فورم إضافة البرامج
-        document.getElementById('product-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const btn = document.getElementById('submit-btn');
-            btn.innerText = "جاري الحفظ... يرجى الانتظار";
-            btn.disabled = true;
-
-            const iconFile = document.getElementById('p-icon-file').files[0];
-            const imageFiles = document.getElementById('p-images').files;
-            const videoFile = document.getElementById('p-video').files[0];
-
-            // تحويل الملفات لـ Base64 للتخزين
-            const toBase64 = file => new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-
-            let iconBase64 = "📦";
-            if (iconFile) iconBase64 = await toBase64(iconFile);
-
-            let imagesBase64 = [];
-            for (let file of imageFiles) {
-                imagesBase64.push(await toBase64(file));
+            } catch (err) { 
+                console.error(err); 
+                showToast("خطأ في الاتصال بفيربيز! تأكد من إعدادات قاعدة البيانات", "error");
             }
+        };
 
-            let videoBase64 = null;
-            if (videoFile) videoBase64 = await toBase64(videoFile);
+        // --- 2. إدارة المنتجات (Products) ---
+        let currentEditId = null;
 
-            let currentProducts = JSON.parse(localStorage.getItem('my_products')) || [];
-
-            if (editIndex !== null) {
-                // حالة التعديل: نحافظ على الأيقونة والصور القديمة لو مرفعناش جديد
-                const oldProduct = currentProducts[editIndex];
-                
-                const updatedProduct = {
-                    ...oldProduct,
-                    name: document.getElementById('p-name').value,
-                    version: document.getElementById('p-version').value,
-                    description: document.getElementById('p-desc').value,
-                    price: document.getElementById('p-price').value,
-                    downloadUrl: document.getElementById('p-link').value
-                };
-
-                if (iconFile) updatedProduct.icon = await toBase64(iconFile);
-                if (imageFiles.length > 0) updatedProduct.gallery = imagesBase64;
-                if (videoFile) updatedProduct.video = videoBase64;
-
-                currentProducts[editIndex] = updatedProduct;
-                editIndex = null; // إعادة تعيين
-            } else {
-                // حالة الإضافة الجديدة
-                const newProduct = {
-                    id: Date.now(),
-                    name: document.getElementById('p-name').value,
-                    version: document.getElementById('p-version').value,
-                    description: document.getElementById('p-desc').value,
-                    price: document.getElementById('p-price').value,
-                    icon: iconBase64,
-                    gallery: imagesBase64,
-                    video: videoBase64,
-                    downloadUrl: document.getElementById('p-link').value
-                };
-                currentProducts.push(newProduct);
-            }
+        window.loadProductsTable = async function() {
+            const tbody = document.getElementById('products-table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>';
             
             try {
-                localStorage.setItem('my_products', JSON.stringify(currentProducts));
-                alert('تم الحفظ بنجاح!');
-            } catch (err) {
-                alert('خطأ: حجم الملفات كبير جداً.');
-            }
+                const querySnapshot = await getDocs(query(collection(db, "products"), orderBy("createdAt", "desc")));
+                let rows = "";
+                querySnapshot.forEach((doc) => {
+                    const p = doc.data();
+                    const id = doc.id;
+                    let iconHTML = p.icon && p.icon.startsWith('data') ? `<img src="${p.icon}" style="width:40px; height:40px; border-radius:5px;">` : '📦';
+                    
+                    rows += `
+                        <tr>
+                            <td>${iconHTML}</td>
+                            <td><b>${p.name}</b><br><small>${p.version}</small></td>
+                            <td>${p.price}</td>
+                            <td>
+                                <button class="btn-action" style="background:#f39c12; color:white;" onclick="editProduct('${id}')">تعديل</button>
+                                <button class="btn-action btn-delete" onclick="deleteProduct('${id}')">حذف</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align:center;">لا توجد برامج مضافة</td></tr>';
+            } catch (err) { console.error(err); }
+        };
 
-            btn.innerText = "حفظ البرنامج ونشره";
+        window.resetProductForm = function() {
+            currentEditId = null;
+            document.getElementById('product-form').reset();
+            document.getElementById('form-title').innerText = "إضافة برنامج جديد";
+            document.getElementById('submit-btn').innerText = "حفظ البرنامج ونشره";
+        };
+
+        window.editProduct = async function(id) {
+            try {
+                const docSnap = await getDoc(doc(db, "products", id));
+                if (docSnap.exists()) {
+                    const p = docSnap.data();
+                    currentEditId = id;
+                    document.getElementById('p-name').value = p.name;
+                    document.getElementById('p-version').value = p.version;
+                    document.getElementById('p-desc').value = p.description;
+                    document.getElementById('p-price').value = p.price;
+                    document.getElementById('p-link').value = p.downloadUrl;
+                    document.getElementById('p-video-url').value = p.video || '';
+                    document.getElementById('p-icon-url').value = p.icon || '';
+                    
+                    document.getElementById('form-title').innerText = "تعديل برنامج: " + p.name;
+                    document.getElementById('submit-btn').innerText = "تحديث البيانات";
+                    document.getElementById('product-form-container').scrollIntoView();
+                }
+            } catch (err) { console.error(err); }
+        };
+
+        window.deleteProduct = async function(id) {
+            if (confirm('هل أنت متأكد من حذف هذا البرنامج؟')) {
+                try {
+                    await deleteDoc(doc(db, "products", id));
+                    showToast('تم الحذف بنجاح');
+                    loadProductsTable();
+                } catch (err) { showToast('خطأ في الحذف', 'error'); }
+            }
+        };
+
+        document.getElementById('product-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "جاري الحفظ...";
+
+            try {
+                const iconFile = document.getElementById('p-icon-file').files[0];
+                const imageFiles = document.getElementById('p-images').files;
+                
+                let iconBase64 = document.getElementById('p-icon-url').value || "📦";
+                if (iconFile) iconBase64 = await toBase64(iconFile);
+
+                let gallery = [];
+                for (let f of imageFiles) gallery.push(await toBase64(f));
+
+                const productData = {
+                    name: document.getElementById('p-name').value,
+                    version: document.getElementById('p-version').value,
+                    description: document.getElementById('p-desc').value,
+                    price: document.getElementById('p-price').value,
+                    downloadUrl: document.getElementById('p-link').value,
+                    video: document.getElementById('p-video-url').value,
+                    icon: iconBase64,
+                    updatedAt: serverTimestamp()
+                };
+
+                if (gallery.length > 0) productData.gallery = gallery;
+
+                if (currentEditId) {
+                    await updateDoc(doc(db, "products", currentEditId), productData);
+                    showToast('تم تحديث البرنامج بنجاح');
+                } else {
+                    productData.createdAt = serverTimestamp();
+                    await addDoc(collection(db, "products"), productData);
+                    showToast('تم إضافة البرنامج بنجاح');
+                }
+                
+                resetProductForm();
+                loadProductsTable();
+            } catch (err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء الحفظ (تأكد من حجم الصور)', 'error');
+            }
             btn.disabled = false;
-            loadProductsTable();
-            this.reset();
         });
 
-        function deleteProduct(index) {
-            if(confirm('هل أنت متأكد من حذف هذا البرنامج؟')) {
-                // ملاحظة: الحذف حالياً للمضافين يدوياً فقط في هذا الكود التوضيحي
-                let currentProducts = JSON.parse(localStorage.getItem('my_products')) || [];
-                // معالجة الترتيب (الأصل + المضاف)
-                if (index < defaultProducts.length) {
-                    alert("لا يمكن حذف البرامج الافتراضية في هذه النسخة التجريبية.");
-                } else {
-                    currentProducts.splice(index - defaultProducts.length, 1);
-                    localStorage.setItem('my_products', JSON.stringify(currentProducts));
-                    loadProductsTable();
-                }
-            }
-        }
+        // --- 3. المستخدمين والمبيعات (Users & Sales) ---
+        window.loadUsersTable = async function() {
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>';
+            try {
+                const querySnapshot = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
+                let rows = "";
+                querySnapshot.forEach((docSnap) => {
+                    const u = docSnap.data();
+                    rows += `
+                        <tr>
+                            <td>${u.name}</td>
+                            <td>${u.email}</td>
+                            <td>${(u.purchases || []).length}</td>
+                            <td>
+                                <button class="btn-action btn-delete" onclick="deleteUser('${docSnap.id}')">حذف</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align:center;">لا يوجد مستخدمين</td></tr>';
+            } catch (err) { console.error(err); }
+        };
 
+        window.deleteUser = async function(id) {
+            if(confirm('حذف هذا المستخدم نهائياً؟')) {
+                await deleteDoc(doc(db, "users", id));
+                showToast('تم حذف المستخدم');
+                loadUsersTable();
+            }
+        };
+
+        window.loadSalesTable = async function() {
+            const tbody = document.getElementById('sales-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr>';
+            try {
+                const querySnapshot = await getDocs(collection(db, "users"));
+                let rows = "";
+                querySnapshot.forEach(docSnap => {
+                    const u = docSnap.data();
+                    (u.purchases || []).forEach(p => {
+                        rows += `
+                            <tr>
+                                <td>${u.name}</td>
+                                <td>${p.productName}</td>
+                                <td><code>${p.serial}</code></td>
+                                <td>${p.date}</td>
+                                <td><span style="color:green">مفعل</span></td>
+                            </tr>
+                        `;
+                    });
+                });
+                tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">لا توجد مبيعات</td></tr>';
+            } catch (err) { console.error(err); }
+        };
+
+        // --- 4. الرسائل والتحميلات (Messages & Downloads) ---
+        window.loadMessagesTable = async function() {
+            const tbody = document.getElementById('messages-table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>';
+            try {
+                const querySnapshot = await getDocs(query(collection(db, "messages"), orderBy("createdAt", "desc")));
+                let rows = "";
+                querySnapshot.forEach(docSnap => {
+                    const m = docSnap.data();
+                    rows += `
+                        <tr style="${m.status === 'new' ? 'background:#fff8e1' : ''}">
+                            <td>${m.name}</td>
+                            <td>${m.subject}</td>
+                            <td>${m.createdAt?.toDate().toLocaleString('ar-EG') || 'حديثاً'}</td>
+                            <td>
+                                <button class="btn-action" style="background:#3498db; color:white;" onclick="viewMessage('${docSnap.id}')">عرض</button>
+                                <button class="btn-action btn-delete" onclick="deleteMessage('${docSnap.id}')">حذف</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align:center;">لا توجد رسائل</td></tr>';
+            } catch (err) { console.error(err); }
+        };
+
+        window.viewMessage = async function(id) {
+            try {
+                const docRef = doc(db, "messages", id);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const m = docSnap.data();
+                    alert(`من: ${m.name}\nإيميل: ${m.email}\nالموضوع: ${m.subject}\n\nالرسالة:\n${m.message}`);
+                    await updateDoc(docRef, { status: 'read' });
+                    loadMessagesTable();
+                }
+            } catch (err) { console.error(err); }
+        };
+
+        window.deleteMessage = async function(id) {
+            if (confirm('حذف الرسالة؟')) {
+                await deleteDoc(doc(db, "messages", id));
+                showToast('تم الحذف');
+                loadMessagesTable();
+            }
+        };
+
+        window.loadDownloadsTable = async function() {
+            const tbody = document.getElementById('downloads-table-body');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">جاري التحميل...</td></tr>';
+            try {
+                const querySnapshot = await getDocs(query(collection(db, "downloads"), orderBy("createdAt", "desc")));
+                let rows = "";
+                querySnapshot.forEach(docSnap => {
+                    const d = docSnap.data();
+                    rows += `
+                        <tr>
+                            <td>${d.product}</td>
+                            <td>${d.createdAt?.toDate().toLocaleString('ar-EG') || 'حديثاً'}</td>
+                            <td>${d.type || 'Trial'}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = rows || '<tr><td colspan="3" style="text-align:center;">لا توجد تحميلات</td></tr>';
+            } catch (err) { console.error(err); }
+        };
+
+        // --- 5. الإعدادات (Settings) ---
+        window.loadContactSettings = async function() {
+            try {
+                const docSnap = await getDoc(doc(db, "config", "contact"));
+                if (docSnap.exists()) {
+                    const s = docSnap.data();
+                    document.getElementById('set-whatsapp').value = s.whatsapp || '';
+                    document.getElementById('set-email').value = s.email || '';
+                    document.getElementById('set-address').value = s.address || '';
+                }
+            } catch (err) { console.error(err); }
+        };
+
+        document.getElementById('settings-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            try {
+                const settings = {
+                    whatsapp: document.getElementById('set-whatsapp').value,
+                    email: document.getElementById('set-email').value,
+                    address: document.getElementById('set-address').value,
+                    updatedAt: serverTimestamp()
+                };
+                await setDoc(doc(db, "config", "contact"), settings);
+                showToast('تم حفظ الإعدادات بنجاح');
+            } catch (err) { showToast('خطأ في الحفظ', 'error'); }
+        });
+
+        // تشغيل تلقائي عند الفتح
         window.onload = loadStats;
     </script>
 </body>
