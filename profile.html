@@ -18,13 +18,16 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             margin-bottom: 30px;
         }
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
         .purchases-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-width: 600px;
         }
         .purchases-table th, .purchases-table td {
             padding: 15px;
@@ -50,6 +53,11 @@
             font-weight: bold;
         }
         .status-active { background: #d4edda; color: #155724; }
+
+        @media (max-width: 768px) {
+            .profile-container { margin: 20px auto; padding: 10px; }
+            .user-info { padding: 15px; }
+        }
     </style>
 </head>
 <body>
@@ -72,20 +80,22 @@
         </div>
 
         <h3>برامجي المشتراة</h3>
-        <table class="purchases-table">
-            <thead>
-                <tr>
-                    <th>البرنامج</th>
-                    <th>تاريخ الشراء</th>
-                    <th>مفتاح التفعيل (Serial)</th>
-                    <th>الحالة</th>
-                    <th>التحميل</th>
-                </tr>
-            </thead>
-            <tbody id="purchases-list">
-                <!-- سيتم ملؤها بواسطة JavaScript -->
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table class="purchases-table">
+                <thead>
+                    <tr>
+                        <th>البرنامج</th>
+                        <th>تاريخ الشراء</th>
+                        <th>مفتاح التفعيل (Serial)</th>
+                        <th>الحالة</th>
+                        <th>التحميل</th>
+                    </tr>
+                </thead>
+                <tbody id="purchases-list">
+                    <!-- سيتم ملؤها بواسطة JavaScript -->
+                </tbody>
+            </table>
+        </div>
     </main>
 
     <footer>
