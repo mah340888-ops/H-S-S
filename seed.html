@@ -16,24 +16,30 @@
         <h2>H S S Data Seeder</h2>
         <p>هذا الملف سيقوم بإضافة بيانات تجريبية (برامج، إعدادات) إلى قاعدة بيانات فيربيز الخاصة بك.</p>
         <button id="seed-btn">بدء إضافة البيانات</button>
+        
+        <hr style="margin: 30px 0;">
+        
+        <h3>إصلاح صلاحيات الأدمن</h3>
+        <p>إذا فقدت صلاحيات الإدارة، أدخل إيميلك هنا لتحويله إلى Admin:</p>
+        <input type="email" id="admin-email" placeholder="email@example.com" style="width: 80%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px;">
+        <br>
+        <button id="make-admin-btn" style="background: #e67e22;">تعيين كـ مسؤول (Admin)</button>
+        
         <div id="status"></div>
     </div>
 
     <script type="module">
         console.log("Seeder script starting...");
-        import { db } from './firebase-config.js';
+        import { db, auth } from './firebase-config.js';
         import { 
-            collection, addDoc, setDoc, doc, serverTimestamp 
+            collection, addDoc, setDoc, doc, serverTimestamp, query, where, getDocs, updateDoc
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const btn = document.getElementById('seed-btn');
+        const adminBtn = document.getElementById('make-admin-btn');
         const status = document.getElementById('status');
 
-        if (!db) {
-            console.error("Firebase DB not initialized!");
-            status.innerHTML = "<h3 style='color:red'>خطأ: لم يتم التعرف على قاعدة البيانات. تأكد من إعدادات firebase-config.js</h3>";
-        }
-
+        // ... البيانات السابقة ...
         const products = [
             {
                 name: "HSS Photoshop Pro",
@@ -80,6 +86,35 @@
             createdAt: serverTimestamp()
         };
 
+        // وظيفة إصلاح الأدمن
+        adminBtn.onclick = async () => {
+            const email = document.getElementById('admin-email').value.trim();
+            if (!email) return alert("يرجى إدخال الإيميل أولاً");
+            
+            adminBtn.disabled = true;
+            status.innerHTML = "جاري البحث عن الحساب وتحديث الصلاحيات...";
+            
+            try {
+                // البحث في الـ Auth (هذا يتطلب تسجيل دخول مسبق أحياناً، لكن سنحاول تحديث الـ Firestore مباشرة بالـ UID إذا كان مسجلاً)
+                // الأفضل هنا البحث في مجموعة Users وإذا لم يوجد ننشئه كأدمن
+                const q = query(collection(db, "users"), where("email", "==", email));
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    const userDoc = querySnapshot.docs[0];
+                    await updateDoc(doc(db, "users", userDoc.id), { role: "admin" });
+                    status.innerHTML = `<h3 style='color:green'>تم بنجاح! الإيميل ${email} أصبح الآن Admin. ✅</h3>`;
+                } else {
+                    // إذا كان الدوك ممسوح، سنحاول إنشاؤه (لكن نحتاج الـ UID، لذا سنطلب منه تسجيل الدخول كـ user أولاً ثم استخدام هذه الأداة)
+                    status.innerHTML = `<h3 style='color:red'>لم يتم العثور على بيانات هذا الإيميل في Firestore.</h3>
+                    <p>يرجى تسجيل الدخول/إنشاء حساب بهذا الإيميل أولاً من صفحة register.html ثم العودة هنا لترقيته.</p>`;
+                }
+            } catch (err) {
+                status.innerHTML = "<h3 style='color:red'>خطأ: </h3>" + err.message;
+            }
+            adminBtn.disabled = false;
+        };
+
         btn.onclick = async () => {
             console.log("Button clicked!");
             btn.disabled = true;
@@ -111,12 +146,11 @@
             } catch (err) {
                 console.error("Error during seeding:", err);
                 status.innerHTML = "<h3 style='color:red'>حدث خطأ أثناء الإضافة ❌</h3>" + 
-                                   "<p>السبب: " + err.message + "</p>" +
-                                   "<p>تأكد من أن <b>Firestore Rules</b> تسمح بالكتابة (Test Mode).</p>";
+                                   "<p>السبب: " + err.message + "</p>";
                 btn.disabled = false;
-                alert("حدث خطأ: " + err.message);
             }
         };
+    </script>
     </script>
 </body>
 </html>

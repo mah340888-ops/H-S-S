@@ -131,6 +131,20 @@
                     setTimeout(() => {
                         window.location.href = (userData.role === 'admin') ? 'admin.html' : 'index.html';
                     }, 1500);
+                } else {
+                    // إذا كان الحساب موجود في Auth ولكن بياناته ممسوحة من Firestore
+                    console.warn("User data not found in Firestore. Creating temporary session.");
+                    const tempData = { 
+                        uid: user.uid, 
+                        name: "مستخدم", 
+                        email: user.email, 
+                        role: 'user', 
+                        purchases: [],
+                        isLoggedIn: true 
+                    };
+                    localStorage.setItem('hss_user', JSON.stringify(tempData));
+                    showToast("تم الدخول، لكن بياناتك غير مكتملة في قاعدة البيانات.", "warning");
+                    setTimeout(() => window.location.href = "index.html", 1500);
                 }
             } catch (error) {
                 console.error(error);
