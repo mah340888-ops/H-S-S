@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H S S | Hamada Systems Software</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">H S S</div>
+            <ul id="nav-links">
+                <li><a href="index.html">الرئيسية</a></li>
+                <li><a href="products.html">البرامج</a></li>
+                <li><a href="contact.html">تواصل معنا</a></li>
+                <li><a href="register.html" id="auth-link">تسجيل حساب</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <script>
+        function updateAuthLink() {
+            const user = JSON.parse(localStorage.getItem('hss_user'));
+            const authLink = document.getElementById('auth-link');
+            const navLinks = document.getElementById('nav-links');
+            
+            if (user && user.isLoggedIn) {
+                // تحديد رابط لوحة التحكم بناءً على الرول
+                const dashboardPage = user.role === 'admin' ? 'admin.html' : 'profile.html';
+                const dashboardText = user.role === 'admin' ? 'لوحة الإدارة' : 'لوحة التحكم';
+
+                if (!document.getElementById('profile-link')) {
+                    const li = document.createElement('li');
+                    li.id = "profile-link";
+                    li.innerHTML = `<a href="${dashboardPage}">${dashboardText}</a>`;
+                    navLinks.insertBefore(li, authLink.parentNode);
+                }
+
+                authLink.innerHTML = `<span class="user-status">أهلاً، ${user.name.split(' ')[0]}</span>`;
+                authLink.href = "#";
+                authLink.onclick = () => {
+                    if(confirm('هل تريد تسجيل الخروج؟')) {
+                        localStorage.removeItem('hss_user');
+                        location.reload();
+                    }
+                };
+            }
+        }
+        window.addEventListener('load', updateAuthLink);
+    </script>
+
+    <main>
+        <section class="hero">
+            <h1>أهلاً بك في Hamada Systems Software</h1>
+            <p>وجهتك الأولى لأفضل الحلول البرمجية والتقنية.</p>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="ابحث عن برنامج..." onkeyup="searchProducts()">
+            </div>
+        </section>
+
+        <section class="products" id="products-list">
+            <h2>أحدث البرامج</h2>
+            <div class="product-grid">
+                <!-- سيتم إضافة أحدث 3 برامج هنا -->
+            </div>
+            <div style="margin-top: 30px;">
+                <a href="products.html" class="download-link" style="background-color: #2c3e50;">مشاهدة جميع البرامج</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>H S S - Hamada Systems Software &copy; 2026</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        window.onload = () => displayProducts(true); // عرض الأحدث فقط
+    </script>
+</body>
+</html>

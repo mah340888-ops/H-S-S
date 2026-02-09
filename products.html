@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H S S | جميع البرامج</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">H S S</div>
+            <ul id="nav-links">
+                <li><a href="index.html">الرئيسية</a></li>
+                <li><a href="products.html">البرامج</a></li>
+                <li><a href="contact.html">تواصل معنا</a></li>
+                <li><a href="register.html" id="auth-link">تسجيل حساب</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <script>
+        function updateAuthLink() {
+            const user = JSON.parse(localStorage.getItem('hss_user'));
+            const authLink = document.getElementById('auth-link');
+            const navLinks = document.getElementById('nav-links');
+            
+            if (user && user.isLoggedIn) {
+                const dashboardPage = user.role === 'admin' ? 'admin.html' : 'profile.html';
+                const dashboardText = user.role === 'admin' ? 'لوحة الإدارة' : 'لوحة التحكم';
+
+                if (!document.getElementById('profile-link')) {
+                    const li = document.createElement('li');
+                    li.id = "profile-link";
+                    li.innerHTML = `<a href="${dashboardPage}">${dashboardText}</a>`;
+                    navLinks.insertBefore(li, authLink.parentNode);
+                }
+                authLink.innerHTML = `<span class="user-status">أهلاً، ${user.name.split(' ')[0]}</span>`;
+                authLink.href = "#";
+                authLink.onclick = () => {
+                    if(confirm('هل تريد تسجيل الخروج؟')) {
+                        localStorage.removeItem('hss_user');
+                        location.reload();
+                    }
+                };
+            }
+        }
+        window.addEventListener('load', updateAuthLink);
+    </script>
+
+    <main>
+        <section class="products">
+            <h2>جميع البرامج المتاحة</h2>
+            <div class="product-grid" id="all-products-grid">
+                <!-- تعرض جميع البرامج هنا -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>H S S - Hamada Systems Software &copy; 2026</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        window.onload = () => displayProducts(false); // عرض الكل
+    </script>
+</body>
+</html>
