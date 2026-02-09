@@ -18,3 +18,27 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
 console.log("Firebase initialized successfully!");
+// 1. استيراد خدمات قاعدة البيانات
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// 2. تعريف قاعدة البيانات
+const db = getFirestore(app);
+
+// 3. دالة لإرسال بيانات تجريبية
+async function testFirebase() {
+    try {
+        const docRef = await addDoc(collection(db, "users"), {
+            name: "Ahmed",
+            message: "Hello from my website!",
+            date: new Date()
+        });
+        console.log("تم إرسال البيانات بنجاح! ID: ", docRef.id);
+        alert("مبروك! أول داتا وصلت لفيربيز");
+    } catch (e) {
+        console.error("خطأ في الإرسال: ", e);
+    }
+}
+
+// تشغيل الدالة فوراً للتجربة
+testFirebase();
+
