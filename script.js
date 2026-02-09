@@ -26,31 +26,51 @@ const defaultProducts = [
 ];
 
 // وظيفة لعرض البرامج
-function displayProducts(limitLatest = false) {
+function displayProducts(limitLatest = false, searchTerm = "") {
     const grid = document.querySelector('.product-grid');
     if (!grid) return;
-
-    grid.innerHTML = ""; 
 
     const localProducts = JSON.parse(localStorage.getItem('my_products')) || [];
     let allProducts = [...defaultProducts, ...localProducts];
 
-    // إذا كنا في الصفحة الرئيسية، نعرض آخر 3 فقط
-    if (limitLatest) {
+    // تصفية المنتجات بناءً على البحث
+    if (searchTerm) {
+        allProducts = allProducts.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            p.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+
+    // إذا كنا في الصفحة الرئيسية (بدون بحث)، نعرض آخر 3 فقط
+    if (limitLatest && !searchTerm) {
         allProducts = allProducts.slice(-3).reverse();
     }
 
-    allProducts.forEach((product, index) => {
+    if (allProducts.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; padding: 50px; text-align: center; color: #7f8c8d;">
+                <span style="font-size: 4rem; display: block; margin-bottom: 15px;">🔍</span>
+                <h3>عذراً، لم نجد أي نتائج تطابق بحثك.</h3>
+                <p>حاول استخدام كلمات مفتاحية أخرى.</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = ""; 
+    allProducts.forEach((product) => {
+        const productId = product.id;
+        const originalIndex = [...defaultProducts, ...localProducts].findIndex(p => p.name === product.name);
+
         const shortDesc = product.description.substring(0, 60) + "...";
         
-        // التحقق من نوع الأيقونة (صورة أم إيموجي)
         let iconHTML = product.icon;
         if (product.icon && product.icon.startsWith('data:image')) {
             iconHTML = `<img src="${product.icon}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;">`;
         }
 
         const card = `
-            <div class="product-card" onclick="goToDetails(${product.id || 'null'}, ${index})">
+            <div class="product-card" onclick="goToDetails(${productId}, ${originalIndex})">
                 <div class="product-image">${iconHTML}</div>
                 <h3>${product.name}</h3>
                 <p class="specs">${shortDesc}</p>
@@ -60,6 +80,21 @@ function displayProducts(limitLatest = false) {
         `;
         grid.innerHTML += card;
     });
+}
+
+// وظيفة البحث
+function searchProducts() {
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    
+    const searchTerm = input.value.trim();
+    const title = document.querySelector('.products h2');
+    
+    if (title) {
+        title.innerText = searchTerm ? `نتائج البحث عن: ${searchTerm}` : (window.location.pathname.includes('products.html') ? "جميع البرامج المتاحة" : "أحدث البرامج");
+    }
+
+    displayProducts(window.location.pathname.includes('index.html'), searchTerm);
 }
 
 // التوجيه لصفحة التفاصيل
@@ -85,11 +120,8 @@ function showProductDetails() {
     if (!product) return;
 
     const container = document.getElementById('product-details');
-    
-    // التحقق من الشراء
     const isPurchased = user && user.purchases && user.purchases.find(p => p.productName === product.name);
 
-    // بناء معرض الصور
     let galleryHTML = "";
     if (product.gallery && product.gallery.length > 0) {
         galleryHTML = `
@@ -102,7 +134,6 @@ function showProductDetails() {
         `;
     }
 
-    // بناء الفيديو
     let videoHTML = "";
     if (product.video) {
         videoHTML = `
@@ -116,7 +147,6 @@ function showProductDetails() {
         `;
     }
 
-    // بناء قسم الأكشن (شراء/تحميل)
     let actionSection = "";
     if (isPurchased) {
         actionSection = `
@@ -138,25 +168,20 @@ function showProductDetails() {
         `;
     }
 
-    // تجميع الصفحة النهائية
     container.innerHTML = `
         <div class="product-header-panel">
-            <img src="${product.icon.startsWith('data') ? product.icon : 'https://via.placeholder.com/100?text=📦'}" class="product-header-icon">
+            <img src="${product.icon && product.icon.startsWith('data') ? product.icon : 'https://via.placeholder.com/100?text=📦'}" class="product-header-icon">
             <div class="product-header-info">
                 <h1>${product.name}</h1>
                 <span class="version-tag">الإصدار: ${product.version || 'v1.0.0'}</span>
             </div>
         </div>
-
         ${galleryHTML}
-
         <div class="description-section">
             <h3>📝 عن البرنامج</h3>
             <div class="description-text">${product.description}</div>
         </div>
-
         ${videoHTML}
-
         ${actionSection}
     `;
 }
@@ -170,14 +195,14 @@ function trackDownload(productName) {
     };
     downloads.push(downloadInfo);
     localStorage.setItem('hss_downloads', JSON.stringify(downloads));
-    console.log("Download tracked:", productName);
+    showToast("جاري بدء تحميل النسخة التجريبية...");
 }
 
 function buyNow(name, downloadUrl) {
     const user = getLoggedInUser();
     if (!user || !user.isLoggedIn) {
-        alert("يرجى تسجيل الدخول أولاً لإتمام عملية الشراء.");
-        window.location.href = "register.html";
+        showToast("يرجى تسجيل الدخول أولاً لإتمام عملية الشراء.", "error");
+        setTimeout(() => window.location.href = "register.html", 2000);
         return;
     }
 
@@ -192,19 +217,25 @@ function buyNow(name, downloadUrl) {
         };
 
         if (!user.purchases) user.purchases = [];
-        
         const alreadyBought = user.purchases.find(p => p.productName === name);
         if (alreadyBought) {
-            alert("لقد قمت بشراء هذا البرنامج بالفعل.");
-            window.location.href = "profile.html";
+            showToast("لقد قمت بشراء هذا البرنامج بالفعل.", "error");
+            setTimeout(() => window.location.href = "profile.html", 2000);
             return;
         }
 
         user.purchases.push(purchase);
         localStorage.setItem('hss_user', JSON.stringify(user));
         
-        alert("تمت عملية الشراء بنجاح! السيريال: " + serial);
-        window.location.href = "profile.html";
+        let allUsers = JSON.parse(localStorage.getItem('hss_users_list')) || [];
+        const userIndex = allUsers.findIndex(u => u.email === user.email);
+        if (userIndex !== -1) {
+            allUsers[userIndex] = user;
+            localStorage.setItem('hss_users_list', JSON.stringify(allUsers));
+        }
+
+        showToast("تمت عملية الشراء بنجاح! جاري تحويلك...");
+        setTimeout(() => window.location.href = "profile.html", 2000);
     }
 }
 
@@ -240,8 +271,33 @@ function displayUserPurchases(user) {
     `).join('');
 }
 
-function searchProducts() {
-    // ... كود البحث السابق مع التعديل ليعمل بنفس الطريقة
+// نظام تنبيهات (Toast) بسيط وجذاب
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'success' ? '#27ae60' : '#e74c3c'};
+        color: white;
+        padding: 12px 25px;
+        border-radius: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        z-index: 9999;
+        font-weight: bold;
+        transition: 0.3s;
+        opacity: 0;
+    `;
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => { toast.style.opacity = '1'; toast.style.bottom = '40px'; }, 100);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 // Lightbox Functions
@@ -251,7 +307,7 @@ function openLightbox(src) {
     if (modal && img) {
         img.src = src;
         modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // منع السكرول في الصفحة الخلفية
+        document.body.style.overflow = 'hidden';
     }
 }
 

@@ -51,6 +51,9 @@
     <main>
         <section class="products">
             <h2>جميع البرامج المتاحة</h2>
+            <div class="search-container" style="margin-bottom: 30px;">
+                <input type="text" id="search-input" placeholder="ابحث في جميع البرامج..." onkeyup="searchProducts()">
+            </div>
             <div class="product-grid" id="all-products-grid">
                 <!-- تعرض جميع البرامج هنا -->
             </div>
@@ -62,6 +65,7 @@
     </footer>
 
     <script src="script.js"></script>
+    <script type="module" src="firebase-config.js"></script>
     <script>
         window.onload = () => displayProducts(false); // عرض الكل
     </script>
